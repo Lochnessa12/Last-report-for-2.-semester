@@ -1,0 +1,169 @@
+#Collection of libraries used 
+library(matrixStats)
+library(ggplot2)
+library(tidyverse)
+library(caret)
+library(randomForest)
+
+#Loading the csv file
+data <- read.csv("BreastCancer.csv")
+
+#Viewing number of samples in the data set ----
+#Samples are number of rows
+nrow(data)
+#569 samples
+
+#Viewing number of features in the data set ----
+#Features are number of columns
+ncol(data)
+#30 features
+
+#Viewing the class distribution ----
+#First, the wanted column (diagnosis) is extracted from the data set  
+diagnosis=as.factor(data[,2])
+
+#Then viewing the number of benign and malignant samples
+summary(diagnosis)
+#Benign=357
+#Malignant=212
+
+#Viewing highest and lowest mean and standard deviation ----
+
+#Creating a matrix of the features to be calculated
+num_data <- as.matrix(data[,3:32])
+
+#Making a forloop for the matrix funktion der gÃ¸r at gentage kode pÃ¥ forskellige kolonner fra 1 til antal kolonner i vektor 
+for(i in 1:ncol(num_data))
+
+#Using print, to collect the total mean and standard deviation
+print(paste(names(num_data)[i],
+              "mean:", mean(num_data[,i],na.rm=T),
+               "sd:",sd(num_data[,i],na.rm=T),
+               "range:from", range(num_data[,i], na.rm=T)[1],
+               "to", range(num_data[,i], na.rm=T)[2]))
+
+#Viewing the highest mean with the name of the column
+paste("highest mean:", names(which.max(colMeans(num_data))))
+
+#Viewing the lowest mean with the name of the column
+paste("lowest mean:", names(which.min(colMeans(num_data))))
+
+#Viewing the highest standard with the name of the column
+#This column can't print in names with "names" code, therefore colnames is used to print
+paste("highest sd:",colnames(num_data)[which.max(colSds(num_data))])
+
+#Viewing the lowest standard with the name of the column
+paste("lowest sd:", colnames(num_data)[which.min(colSds(num_data))])
+
+#Finding most and least correlated feature pair ----
+#First, making the datamatrix into correlation
+correlation <- cor(num_data)
+
+#Remove all places where correlation is =1
+correlation[correlation==1] <- NA
+
+#Find most correlated pair
+which(correlation == max(correlation, na.rm=T), arr.ind=T)
+
+#Find least correlated pair
+which(correlation == min(correlation, na.rm=T), arr.ind=T)
+
+#Making a plot of the first 2 features ----
+#First 2 features are radius_mean and texture_mean
+ggplot(data=data,aes(x=radius_mean,y=texture_mean, color=diagnosis))+ geom_point()
+
+#Now plotting most and least correlated feature pairs ---- 
+#most correlated
+ggplot(data=data,aes(x=radius_mean,y=perimeter_mean, color=diagnosis))+ geom_point()
+
+#least correlated
+ggplot(data=data,aes(x=radius_mean,y=fractal_dimension_mean, color=diagnosis))+ geom_point()
+
+# Plot a heatmap of the data ----
+heatmap(num_data,
+        Rowv=NA,Colv=NA,scale="column",margins=c(5,10),
+        RowSideColors = c("green", "red")[as.factor(data$diagnosis)],
+        main="Heatmap of the Breast Cancer data set",xlab="Features"
+        ,ylab="Samples")
+legend("bottomright",fill=c("green", "red"),legend=c("benign", "malign"))
+
+#Change Rowv and Colv to TRUE
+heatmap(num_data,
+        Rowv=TRUE,Colv=TRUE,scale="column",margins=c(5,10),
+        RowSideColors = c("green", "red")[as.factor(data$diagnosis)],
+        main="Heatmap of the Breast Cancer data set",xlab="Features"
+        ,ylab="Samples")
+legend("bottomright",fill=c("green", "red"),legend=c("benign", "malign"))
+
+#Principal component analysis ----
+#Calculating the principal components
+pca <- prcomp(num_data, center=TRUE, scale=TRUE)
+
+#Vieving the calculations
+summary(pca)
+
+#Plotting the two first principal components ----
+#(PC1 & PC2) 
+ggplot(data=as.data.frame(pca$x),aes(x=PC1,y=PC2, color=data$diagnosis))+ geom_point()
+
+#Viewing the variance in the first two principal components ----
+summary(pca)
+
+#Classification of the data ----
+#Converting the diagnosis column to a factor 
+data$diagnosis <- as.factor(data$diagnosis)
+
+#Creating a new limit for the data, including the diagnosis
+train <-data[,2:32]
+
+#A generelized linear model for the data
+#Diagnosis is tested against the rest of the data
+LR=glm(diagnosis~.,data=train, family="binomial")
+
+#Removing features more correlated than 0.90 
+num_data <- data[,3:32]
+# The plus two is needed since the first two columns were non-numerical
+features_to_remove = findCorrelation(cor(num_data), cutoff = 0.9) + 2
+data_train = data[,-features_to_remove]
+#Discard the ID and X column
+data_train = data_train[,-c(1,23)]
+
+#New linear regression model 
+new_LR=glm(diagnosis~.,data=data_train, family="binomial")
+
+#To view significance, coefficiets and intercept - call summary
+summary(new_LR)
+
+#Calculating accuracy on the training data ----
+#First, a prediction is made on the training
+prediction <- predict(new_LR, data_train, type="response")
+
+#Seperating the prediction into malignant and benign 
+prediction <- ifelse(prediction > 0.5,"M","B")
+
+#How the actual data sepereates the diagnosis
+data$diagnosis
+
+#Viewing the accuracy for the prediction vs. the true data
+confusionMatrix(as.factor(prediction),data$diagnosis)
+
+#Performing a 10-fold cross-variation ----
+train.control <- trainControl(method = "cv", number = 10)
+model <- train(diagnosis ~., data = data_train, method = "glm", trControl = train.control)
+print(model)
+
+
+#Classification with Random Forrest ----
+rf = randomForest(diagnosis ~ .,
+                  data = data_train,
+                  ntree = 1000,
+                  importance=TRUE)
+
+#The accuracy of Random Forrest, analyzing OOB
+oob_error <- rf$err.rate[nrow(rf$err.rate), "OOB"] #nÃ¥r den tager fejl
+print(oob_error)
+
+#Plot and compare the most important features ----
+importance(rf)
+varImpPlot(rf)
+
