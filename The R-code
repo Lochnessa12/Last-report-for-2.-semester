@@ -1,10 +1,11 @@
+setwd("~/Downloads/UNI/BSc. Biomed/MolekylÃ¦r Data Science/LAB F3+4")
 #Collection of libraries used 
 library(matrixStats)
 library(ggplot2)
 library(tidyverse)
 library(caret)
 library(randomForest)
-
+ 
 #Loading the csv file
 data <- read.csv("BreastCancer.csv")
 
@@ -32,15 +33,15 @@ summary(diagnosis)
 #Creating a matrix of the features to be calculated
 num_data <- as.matrix(data[,3:32])
 
-#Making a forloop for the matrix funktion der gÃ¸r at gentage kode pÃ¥ forskellige kolonner fra 1 til antal kolonner i vektor 
+#Making a forloop for the matrix 
 for(i in 1:ncol(num_data))
-
-#Using print, to collect the total mean and standard deviation
-print(paste(names(num_data)[i],
+  
+  #Using print, to collect the total mean and standard deviation
+  print(paste(names(num_data)[i],
               "mean:", mean(num_data[,i],na.rm=T),
-               "sd:",sd(num_data[,i],na.rm=T),
-               "range:from", range(num_data[,i], na.rm=T)[1],
-               "to", range(num_data[,i], na.rm=T)[2]))
+              "sd:",sd(num_data[,i],na.rm=T),
+              "range:from", range(num_data[,i], na.rm=T)[1],
+              "to", range(num_data[,i], na.rm=T)[2]))
 
 #Viewing the highest mean with the name of the column
 paste("highest mean:", names(which.max(colMeans(num_data))))
@@ -70,14 +71,17 @@ which(correlation == min(correlation, na.rm=T), arr.ind=T)
 
 #Making a plot of the first 2 features ----
 #First 2 features are radius_mean and texture_mean
-ggplot(data=data,aes(x=radius_mean,y=texture_mean, color=diagnosis))+ geom_point()
+ggplot(data=data,aes(x=radius_mean,y=texture_mean, color=diagnosis))+ geom_point()+ggtitle("Plot of the two first values: mean texture vs. mean radius")+
+  xlab("Mean Radius") + ylab("Mean Texture")
 
 #Now plotting most and least correlated feature pairs ---- 
 #most correlated
-ggplot(data=data,aes(x=radius_mean,y=perimeter_mean, color=diagnosis))+ geom_point()
+ggplot(data=data,aes(x=radius_mean,y=perimeter_mean, color=diagnosis))+ geom_point()+ggtitle("Plot of the two most correlated features: mean radius vs. mean perimeter")+
+  xlab("Mean Radius") + ylab("Mean Parimeter")
 
 #least correlated
-ggplot(data=data,aes(x=radius_mean,y=fractal_dimension_mean, color=diagnosis))+ geom_point()
+ggplot(data=data,aes(x=radius_mean,y=fractal_dimension_mean, color=diagnosis))+ geom_point()+ggtitle("Plot of the two least correlated features: mean radius vs. mean of fractal dimension")+
+  xlab("Mean Radius") + ylab("Mean of Fractal Dimension")
 
 # Plot a heatmap of the data ----
 heatmap(num_data,
@@ -102,9 +106,11 @@ pca <- prcomp(num_data, center=TRUE, scale=TRUE)
 #Vieving the calculations
 summary(pca)
 
+
 #Plotting the two first principal components ----
 #(PC1 & PC2) 
-ggplot(data=as.data.frame(pca$x),aes(x=PC1,y=PC2, color=data$diagnosis))+ geom_point()
+ggplot(data=as.data.frame(pca$x),aes(x=PC1,y=PC2, color=data$diagnosis))+ geom_point() + ggtitle("Scatterplot for the first two principal components")
+
 
 #Viewing the variance in the first two principal components ----
 summary(pca)
@@ -160,8 +166,7 @@ rf = randomForest(diagnosis ~ .,
                   importance=TRUE)
 
 #The accuracy of Random Forrest, analyzing OOB
-oob_error <- rf$err.rate[nrow(rf$err.rate), "OOB"] #nÃ¥r den tager fejl
-print(oob_error)
+oob_error <- rf$err.rate[nrow(rf$err.rate), "OOB"]
 
 #Plot and compare the most important features ----
 importance(rf)
